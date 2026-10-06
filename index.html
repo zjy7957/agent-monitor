@@ -1,0 +1,58 @@
+<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Agent Monitor</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<style>
+:root{--bg:#0f1115;--card:#171a21;--line:#2a2f3a;--txt:#e6e9ef;--dim:#8b93a1;--ok:#3fb37f;--warn:#e0a840;--err:#e05a5a;--accent:#5b8cff}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--txt);font:14px/1.5 system-ui,sans-serif}
+header{display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid var(--line)}
+header h1{font-size:16px;margin:0}header .dot{width:10px;height:10px;border-radius:50%;background:var(--ok)}
+header .spacer{flex:1}header button{background:var(--accent);border:0;color:#fff;padding:8px 14px;border-radius:8px;cursor:pointer}
+main{padding:20px;display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}
+.card .label{color:var(--dim);font-size:12px}.card .value{font-size:22px;font-weight:700;margin-top:6px}
+.card .sub{color:var(--dim);font-size:12px;margin-top:4px}
+.bar{height:8px;border-radius:6px;background:#232833;margin-top:10px;overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--accent);transition:width .4s}
+.bar.warn>i{background:var(--warn)}.bar.err>i{background:var(--err)}
+.chart{grid-column:1/-1;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}
+.chart h2{font-size:14px;margin:0 0 10px;color:var(--dim)}.chart canvas{width:100%!important;height:240px!important}
+@media(max-width:700px){main{grid-template-columns:1fr 1fr}}
+</style></head><body>
+<header><span class="dot" id="statusDot"></span><h1>Agent Monitor</h1>
+<span class="spacer"></span><button onclick="refresh()">刷新</button></header>
+<main>
+<div class="card"><div class="label">CPU</div><div class="value" id="cpu">—</div><div class="sub" id="cpuSub">—</div><div class="bar" id="cpuBar"><i></i></div></div>
+<div class="card"><div class="label">内存</div><div class="value" id="mem">—</div><div class="sub" id="memSub">—</div><div class="bar" id="memBar"><i></i></div></div>
+<div class="card"><div class="label">显存</div><div class="value" id="vram">—</div><div class="sub" id="vramSub">—</div><div class="bar" id="vramBar"><i></i></div></div>
+<div class="card"><div class="label">GPU 利用率</div><div class="value" id="gpuUtil">—</div><div class="sub" id="gpuSub">—</div><div class="bar" id="gpuBar"><i></i></div></div>
+<div class="card"><div class="label">在线 Agent</div><div class="value" id="agents">—</div></div>
+<div class="card"><div class="label">调用次数</div><div class="value" id="calls">—</div></div>
+<div class="card"><div class="label">Token 用量</div><div class="value" id="tokens">—</div></div>
+<div class="card"><div class="label">平均响应</div><div class="value" id="latency">—</div></div>
+<div class="chart"><h2>历史曲线</h2><canvas id="chart"></canvas></div>
+</main>
+<script>
+function setBar(id,p){const b=document.getElementById(id),f=b.querySelector('i');f.style.width=Math.min(100,p)+'%';b.classList.toggle('warn',p>=70);b.classList.toggle('err',p>=90);}
+const chart=new Chart(document.getElementById('chart'),{type:'line',data:{labels:[],datasets:[
+{label:'CPU %',data:[],borderColor:'#5b8cff',tension:.3,pointRadius:0},
+{label:'内存 %',data:[],borderColor:'#3fb37f',tension:.3,pointRadius:0},
+{label:'显存 %',data:[],borderColor:'#e0a840',tension:.3,pointRadius:0}]},
+options:{responsive:true,animation:false,scales:{y:{min:0,max:100}}}});
+async function refresh(){
+ try{const d=await(await fetch('/api/stats')).json(),c=d.current;
+  document.getElementById('cpu').textContent=c.cpu+'%';document.getElementById('cpuSub').textContent=c.cpu_count+' 核心';setBar('cpuBar',c.cpu);
+  document.getElementById('mem').textContent=c.mem_pct+'%';document.getElementById('memSub').textContent=c.mem_used+' / '+c.mem_total+' MB';setBar('memBar',c.mem_pct);
+  if(c.gpu_name!=='N/A'){document.getElementById('vram').textContent=c.vram_pct+'%';document.getElementById('vramSub').textContent=c.vram_used+' / '+c.vram_total+' MB';setBar('vramBar',c.vram_pct);
+   document.getElementById('gpuUtil').textContent=c.gpu_util+'%';document.getElementById('gpuSub').textContent=c.gpu_name;setBar('gpuBar',c.gpu_util);}
+  else{document.getElementById('vram').textContent='N/A';document.getElementById('vramSub').textContent='未检测到 NVIDIA GPU';}
+  document.getElementById('agents').textContent=c.agents;document.getElementById('calls').textContent=c.calls.toLocaleString();
+  document.getElementById('tokens').textContent=c.tokens.toLocaleString();document.getElementById('latency').textContent=c.latency+' ms';
+  document.getElementById('statusDot').style.background='var(--ok)';
+  const h=d.history;chart.data.labels=h.map(s=>new Date(s.ts*1000).toLocaleTimeString());
+  chart.data.datasets[0].data=h.map(s=>s.cpu);chart.data.datasets[1].data=h.map(s=>s.mem_pct);chart.data.datasets[2].data=h.map(s=>s.vram_pct);
+  chart.update();
+ }catch(e){document.getElementById('statusDot').style.background='var(--err)';}
+}
+refresh();setInterval(refresh,2000);
+</script></body></html>

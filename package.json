@@ -1,0 +1,19 @@
+{
+  "name": "agent-monitor",
+  "version": "1.0.0",
+  "main": "main.js",
+  "scripts": { "start": "electron .", "build": "electron-builder" },
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.example.agentmonitor",
+    "productName": "Agent Monitor",
+    "outDir": "release",
+    "files": ["main.js", "index.html"],
+    "extraResources": [{ "from": "build/monitor_server.exe", "to": "monitor_server.exe" }],
+    "win": { "target": "portable" },
+    "portable": { "artifactName": "AgentMonitor.exe" }
+  }
+}
