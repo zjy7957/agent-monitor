@@ -4,15 +4,15 @@ jobs:
   build:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with: { python-version: '3.11' }
-      - uses: actions/setup-node@v4
-        with: { node-version: '20' }
+      - uses: actions/setup-node@v5
+        with: { node-version: '22' }
       - name: build backend
         run: |
           pip install flask psutil nvidia-ml-py pyinstaller
-          pyinstaller --onefile --noconsole --hidden-import pynvml --distpath build --name monitor_server monitor_server.py
+          pyinstaller --onefile --noconsole --hidden-import pynvml --workpath work --distpath build --name monitor_server monitor_server.py
       - name: build electron portable exe
         run: |
           npm install
